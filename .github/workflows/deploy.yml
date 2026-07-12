@@ -27,4 +27,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 19432de893c64c7fe580c040c05130c5
+          wranglerVersion: "4.110.0"
           command: pages deploy dist --project-name rvhl-consulting --branch ${{ github.ref_name }} --commit-dirty=true
