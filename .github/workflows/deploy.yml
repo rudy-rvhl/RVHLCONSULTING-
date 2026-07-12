@@ -1,0 +1,30 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - claude/rvhl-cinematic-scroll-site-rl6cjf
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site
+        run: |
+          mkdir -p dist
+          cp -r index.html consultation.html thank-you.html blog css js assets vendor \
+                favicon.svg robots.txt sitemap.xml llms.txt _headers *.txt dist/ 2>/dev/null || true
+          rm -rf dist/dist
+
+      - name: Publish
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 19432de893c64c7fe580c040c05130c5
+          command: pages deploy dist --project-name rvhl-consulting --branch ${{ github.ref_name }} --commit-dirty=true
