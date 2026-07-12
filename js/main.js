@@ -38,7 +38,7 @@
 
   /* ---------- canvas frame sequence ---------- */
   var canvas = document.getElementById('film-canvas');
-  var ctx = canvas.getContext('2d');
+  var ctx = canvas.getContext('2d', { alpha: false });
   var FRAME_COUNT = parseInt(canvas.dataset.frameCount, 10);
   var FRAME_PATH = canvas.dataset.framePath;
   var poster = document.querySelector('.stage-poster');
@@ -58,17 +58,30 @@
   function load(i, cb) {
     if (status[i]) return;
     status[i] = 1;
-    var img = new Image();
-    img.decoding = 'async';
-    img.onload = function () {
+    var done = function (img) {
       status[i] = 2;
       images[i] = img;
       if (cb) cb(i);
       // repaint if the newly loaded frame is closer to target than what's shown
       if (nearestReady(currentFrame) === i) render(true);
     };
-    img.onerror = function () { status[i] = 0; };
-    img.src = frameSrc(i);
+    var fail = function () { status[i] = 0; if (cb) cb(i); };
+    if (window.createImageBitmap) {
+      // decode off the main thread: scrubbing never pays a decode cost
+      fetch(frameSrc(i)).then(function (r) {
+        if (!r.ok) throw new Error(r.status);
+        return r.blob();
+      }).then(function (b) { return createImageBitmap(b); }).then(done).catch(fail);
+    } else {
+      var img = new Image();
+      img.decoding = 'async';
+      img.onload = function () {
+        if (img.decode) img.decode().then(function () { done(img); }, function () { done(img); });
+        else done(img);
+      };
+      img.onerror = fail;
+      img.src = frameSrc(i);
+    }
   }
 
   function nearestReady(i) {
@@ -103,7 +116,7 @@
   pump();
 
   /* cover-fit draw */
-  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   function resize() {
     canvas.width = Math.round(window.innerWidth * dpr);
     canvas.height = Math.round(window.innerHeight * dpr);
@@ -119,7 +132,7 @@
     renderedFrame = i;
     var img = images[i];
     var cw = canvas.width, ch = canvas.height;
-    var iw = img.naturalWidth, ih = img.naturalHeight;
+    var iw = img.width || img.naturalWidth, ih = img.height || img.naturalHeight;
     var s = Math.max(cw / iw, ch / ih);
     var dw = iw * s, dh = ih * s;
     ctx.drawImage(img, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
@@ -129,24 +142,34 @@
     }
   }
 
-  function setFrame(p) {
-    currentFrame = Math.max(0, Math.min(FRAME_COUNT - 1, Math.round(p * (FRAME_COUNT - 1))));
-    render(false);
-  }
-
   /* ---------- film timeline ---------- */
   var film = document.getElementById('film');
   var progressBar = document.getElementById('film-progress');
   var stageDim = document.querySelector('.stage-dim');
 
+  /* scroll sets a target; a per-tick lerp glides the frame to it so fast
+     wheels never jump ten frames in one paint */
+  var targetProgress = 0;
+  var displayFrame = 0;
+
   ScrollTrigger.create({
     trigger: film,
     start: 'top top',
     end: 'bottom bottom',
-    scrub: true,
     onUpdate: function (self) {
-      setFrame(self.progress);
+      targetProgress = self.progress;
       progressBar.style.transform = 'scaleX(' + self.progress + ')';
+    }
+  });
+
+  gsap.ticker.add(function () {
+    var target = targetProgress * (FRAME_COUNT - 1);
+    displayFrame += (target - displayFrame) * 0.24;
+    if (Math.abs(target - displayFrame) < 0.4) displayFrame = target;
+    var f = Math.max(0, Math.min(FRAME_COUNT - 1, Math.round(displayFrame)));
+    if (f !== currentFrame) {
+      currentFrame = f;
+      render(false);
     }
   });
 
