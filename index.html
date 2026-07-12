@@ -224,7 +224,28 @@
         <a class="reveal" href="mailto:info@rvhlconsulting.com">info@rvhlconsulting.com</a>
       </div>
       <p class="appointment reveal">By appointment only</p>
-      <a class="cta-button reveal" href="mailto:info@rvhlconsulting.com?subject=Private%20Consultation">Request an appointment</a>
+      <form class="consult-form reveal" action="https://formsubmit.co/rudy@rvhlconsulting.com" method="POST">
+        <input type="hidden" name="_subject" value="Private consultation request — rvhlconsulting.com">
+        <input type="hidden" name="_template" value="table">
+        <input type="hidden" name="_captcha" value="false">
+        <input type="hidden" name="_next" value="https://rvhl-consulting.pages.dev/thank-you">
+        <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <div class="form-row">
+          <label>
+            <span>Name</span>
+            <input type="text" name="name" required autocomplete="name">
+          </label>
+          <label>
+            <span>Email</span>
+            <input type="email" name="email" required autocomplete="email">
+          </label>
+        </div>
+        <label>
+          <span>What is on the table</span>
+          <textarea name="message" rows="4" required></textarea>
+        </label>
+        <button class="cta-button" type="submit">Request an appointment</button>
+      </form>
     </div>
   </section>
 
